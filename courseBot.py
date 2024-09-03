@@ -33,7 +33,10 @@ class courseBot:
                     'friday': self.schedule.every().friday, 
                     'saturday': self.schedule.every().saturday, 
                     'sunday': self.schedule.every().sunday}
-       
+        
+        ### job is not callable error
+        self.schedule.every().tuesday.at(class_time).do(open_link, link)
+        '''
         if weekday.lower() in weekdays:
             if exception_date and replacement_date:
                 replacement_date_obj = time.strptime(replacement_date, "%Y-%m-%d")
@@ -45,6 +48,7 @@ class courseBot:
                 weekdays[weekday.lower()]().at(class_time).do(open_link, link)
         else:
             print("Invalid weekday for course on " + weekday)
+        '''
 
     # exception and replacement date format: "%Y-%m-%d"
     def add_class(self, link, weekday, class_time, start_date, end_date, exception_date = None, replacement_date = None):

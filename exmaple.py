@@ -10,7 +10,8 @@ Wednesday 2 October replaces Thursday 26 September'''
 
 example_link = "your_test_link_here"
 example_bot = courseBot()
-example_bot.add_class(example_link, "08:00", "2024-09-09", "2024-10-24", "Monday", "2024-09-24", "2024-09-09")
-example_bot.add_class(example_link, "08:00", "2024-09-09", "2024-10-24", "Thursday", "2024-09-26", "2024-10-02")
+
+example_bot.add_class(example_link, "Monday", "08:00", "2024-09-09", "2024-10-24", "2024-09-24", "2024-09-09")
+example_bot.add_class(example_link, "Thursday", "08:00", "2024-09-09", "2024-10-24", "2024-09-26", "2024-10-02")
 
 example_bot.run()
