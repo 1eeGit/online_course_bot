@@ -57,6 +57,6 @@ class courseBot:
         if start_date < current_date < end_date:
             self.add_check(link, weekday, class_time, start_date, end_date, exception_date, replacement_date)
         else:
-            print("Course " + self + " is not ongoing")
+            print("Course " + " is not ongoing")
 
             
