@@ -1,6 +1,3 @@
-# export ics file, save in the same folder with the codes
-# https://studentuef.sharepoint.com/sites/PeppiHandbook/SitePages/Lukkarikone-Schedule-Assistant.aspx
-
 ############################################
 # Read ics file
 # convert into df and save in csv/ db
@@ -17,38 +14,49 @@ import pandas as pd
 from sqlalchemy import create_engine, Column, Integer, String, ForeignKey, DateTime
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import sessionmaker, relationship
+from sqlalchemy import func
+import os
 
 
+# create engine and base globally
+Base = declarative_base()
 
-def read_ics_file(file_path, csv_name):
-    with open(file_path, "r") as f:  
+# create tables
+class Course(Base):
+    __tablename__ = "courses"
+    id = Column(String, primary_key=True)
+    class_name = Column(String)
+    description = Column(String)
+    class_link = Column(String)
+
+    TimeTable = relationship('TimeTable', back_populates='course')
+
+
+class TimeTable(Base):
+    __tablename__ = "TimeTable"
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    class_id = Column(String, ForeignKey("courses.id"))
+    start_time = Column(DateTime)
+    end_time = Column(DateTime)
+    course = relationship('Course', back_populates='TimeTable')
+
+Course.TimeTable = relationship('TimeTable', order_by=TimeTable.id, back_populates='course')
+
+
+# read ics file and save as txt and db file
+def read_ics_file():
+    print("start reading ics file...")
+    with open("Calendar.ics", "r") as f:  
         calendar = f.read()
         
     # save raw ics in txt
-    with open(f"{csv_name}.txt", "w") as f:
+    with open("Calendar.txt", "w") as f:
         f.write(str(calendar))
 
     calendar = Calendar.from_ical(calendar)
     df = pd.DataFrame(columns=["Class_name", "Start_time", "End_time", "Description"])
 
-    engine = create_engine(f"sqlite:///{csv_name}.db")
-    Base = declarative_base()
-
-    # create table: courses, timetable
-    class Course(Base):
-        __tablename__ = "courses"
-        id = Column(Integer, primary_key=True)
-        class_name = Column(String)
-        description = Column(String)
-        class_link = Column(String)
-
-    class timeTable(Base):
-        __tablename__ = "timetable"
-        id = Column(Integer, primary_key=True)
-        class_id = Column(Integer, ForeignKey("courses.id"))
-        start_time = Column(DateTime)
-        end_time = Column(DateTime)
-
+    engine = create_engine(f"sqlite:///calendar.db")
     Base.metadata.create_all(engine)
     Session = sessionmaker(bind=engine)
     session = Session()
@@ -56,25 +64,93 @@ def read_ics_file(file_path, csv_name):
     # add course into database
     for component in calendar.walk():
         if component.name == "VEVENT":  
-            event_name = component.get('SUMMARY')   
-            event_start = component.get('DTSTART').dt 
-            event_end = component.get('DTEND').dt
-            event_description = component.get('DESCRIPTION')
+            class_name = component.get('SUMMARY')   
+            class_start = component.get('DTSTART').dt 
+            class_end = component.get('DTEND').dt
+            class_description = component.get('DESCRIPTION')
+            ### class id format: 1111111-2222 -> also some course starts with letters
+            ### here we use the digits before the last hyphen as class_id
+            class_id = class_name[-12:-5] 
 
-            new_course = Course(class_name=event_name, description=event_description, class_link="")
-            new_timeTable = timeTable(class_id=new_course.id, start_time=event_start, end_time=event_end)
+            # Check if a course already exists
+            existing_course = session.query(Course).filter_by(id=class_id).first()
 
-            session.add(new_course)
-            session.add(new_timeTable)
+            if existing_course is None:
+                new_course = Course(id=class_id, class_name=class_name, description=class_description, class_link=None)
+                session.add(new_course)
+                session.commit() 
+                
+            ### for timetable we don't need to check, each record represents a different class time
+            ### the time is 4 hours ahead of the real time
+            #TODO: CORRECT the time setting, now is not changing 
+            start_time = class_start + datetime.timedelta(hours=4)
+            end_time = class_end + datetime.timedelta(hours=4)
+            new_TimeTable = TimeTable(class_id=class_id, start_time=start_time, end_time=end_time)
+            session.add(new_TimeTable)
             session.commit()
+    session.commit()
+    session.close()
+    print("ics file read and saved in db.")
 
-            # df.loc[len(df)] = [event_name, event_start, event_end, event_description]
+
+# load db file and fetch today's classes
+def today_table():
+    # print("Looking for today's classes...")
+    db_name = "calendar"    
+    engine = create_engine(f"sqlite:///{db_name}.db")
+
+    current_date = datetime.datetime.now().date()
+    Session = sessionmaker(bind=engine)
+    session = Session()
+
+    # fetch the class start at current date
+    # convert start_time to date format
+    today_classes = session.query(TimeTable).filter(func.date(TimeTable.start_time) == current_date).all()
+    results = []   
     
+    for class_ in today_classes:
+        course = session.query(Course).filter(Course.id == class_.class_id).first()
+        # print(f"{course.class_name} will start at {class_.start_time}.")
+        results.append([course.class_name, course.class_link, class_.start_time, class_.end_time])
 
-    # df.to_csv(f"{csv_name}.csv")
+    session.close()
+    return results
 
 
 
-# ------------------------------
-read_ics_file("calendar_week1.ics", "calendar_week1_df")
+# add online meeting link to exsiting class
+def add_link(class_name, link):
+    db_name = "calendar.db"
+    engine = create_engine(f"sqlite:///{db_name}")
+    Session = sessionmaker(bind=engine)
+    session = Session()
 
+    class_ = session.query(Course).filter(Course.class_name == class_name).first()
+    if class_:
+        class_.class_link = link
+        session.commit()
+        print(f"Link added to {class_name}: {link}")  
+    else:
+        print(f"Class {class_name} not found.") 
+
+    session.close()
+
+
+
+def db_exsiting_check():
+    if os.path.exists("calendar.db"):
+        return True
+    elif os.path.exists("Calendar.ics"):
+        print(f"Loading your ics file...")
+        read_ics_file()
+        return True
+    else:
+        print(f"Make sure you have at least save your ics file in the dir.")
+        return False
+
+
+
+def print_today():
+    today_class_list = today_table()
+    for course in today_class_list:
+        print(f"{course[0]} will start at {course[2]}.")
