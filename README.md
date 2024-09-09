@@ -23,3 +23,18 @@ This is a bot that helps me join scheduled online course meetings (especially th
 3. The calendar `.ics` file should be named "calendar.ics".
 
 4. For Windows, you can set your PC to automatically switch on at a specific time, then add the `.py` script to the Task Scheduler. For example, if your class starts at 8:00 AM, set your PC to automatically switch on at 7:55 AM, and either wake up to the call of fresh knowledge, or sleep tight with it... 😴
+
+
+# An easier way for IOS users with regular meetings:
+
+use the shortcut app to create an automation with Zoom app action: join the meeting 
+
+-> Enter zoom ID and password
+
+-> Set a weekly or daily schedule    
+
+-> Optional: Laughing at me who spent days writing this and created automation in 2 minutes :(
+
+
+
+
