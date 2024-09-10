@@ -1,6 +1,6 @@
 ############################################
-# Read ics file
-# convert into df and save in csv/ db
+# Read .ics file
+# convert into df and save in .db
 # organize event as the class in courseBot
 # ------------------------------------------
 # for 'today'
@@ -10,7 +10,6 @@
 
 from icalendar import Calendar
 import datetime
-import pandas as pd
 from sqlalchemy import create_engine, Column, Integer, String, ForeignKey, DateTime
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import sessionmaker, relationship
@@ -54,8 +53,7 @@ def read_ics_file():
         f.write(str(calendar))
 
     calendar = Calendar.from_ical(calendar)
-    df = pd.DataFrame(columns=["Class_name", "Start_time", "End_time", "Description"])
-
+    
     engine = create_engine(f"sqlite:///calendar.db")
     Base.metadata.create_all(engine)
     Session = sessionmaker(bind=engine)
@@ -82,7 +80,6 @@ def read_ics_file():
                 
             ### for timetable we don't need to check, each record represents a different class time
             ### the time is 4 hours ahead of the real time
-            #TODO: CORRECT the time setting, now is not changing 
             start_time = class_start + datetime.timedelta(hours=4)
             end_time = class_end + datetime.timedelta(hours=4)
             new_TimeTable = TimeTable(class_id=class_id, start_time=start_time, end_time=end_time)
@@ -119,19 +116,19 @@ def today_table():
 
 
 # add online meeting link to exsiting class
-def add_link(class_name, link):
+def add_link(class_id, link):
     db_name = "calendar.db"
     engine = create_engine(f"sqlite:///{db_name}")
     Session = sessionmaker(bind=engine)
     session = Session()
 
-    class_ = session.query(Course).filter(Course.class_name == class_name).first()
+    class_ = session.query(Course).filter(Course.id == class_id).first()
     if class_:
         class_.class_link = link
         session.commit()
-        print(f"Link added to {class_name}: {link}")  
+        print(f"Link added to {class_id}: {link}")  
     else:
-        print(f"Class {class_name} not found.") 
+        print(f"Class {class_id} not found.") 
 
     session.close()
 
@@ -154,3 +151,23 @@ def print_today():
     today_class_list = today_table()
     for course in today_class_list:
         print(f"{course[0]} will start at {course[2]}.")
+    print("--------------------------------------------------")
+    print(f"You have {len(today_class_list)} classes today. \n \
+              Good luck! :p")
+
+def print_all():
+    db_name = "calendar"    
+    engine = create_engine(f"sqlite:///{db_name}.db")
+    Session = sessionmaker(bind=engine)
+    session = Session()
+
+    all_classes = session.query(Course).all()
+    for class_ in all_classes:
+        print(f"COURSE NAME: {class_.class_name} \n \
+                COURSE id: {class_.id} \n \
+                COURSE LINK: {class_.class_link} \n \n")
+    print("--------------------------------------------------")
+    print(f"You registered {len(all_classes)} classes now. \n\
+               QwQ.")
+
+    session.close()
