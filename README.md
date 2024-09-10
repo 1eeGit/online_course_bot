@@ -15,6 +15,7 @@ This is a bot that helps me join scheduled online course meetings (especially th
 ### 4. Add the online meeting link to the courses
 
 ### 5. Run the `courseBot.py` file
+![Screenshot 2024-09-10 145344](https://github.com/user-attachments/assets/df934533-d541-4029-8a27-4e83c95b3a81)
 
 ### Other notes:
 
